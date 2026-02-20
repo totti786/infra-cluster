@@ -1,0 +1,60 @@
+---
+- name: Configure Load Balancer Nodes
+  hosts: load_balancers
+  become: yes
+  serial: 1
+  
+  roles:
+    - common
+    - docker
+    - nginx
+    - keepalived
+    
+  tasks:
+    - name: Create nginx upstream config
+      template:
+        src: templates/upstream.conf.j2
+        dest: /etc/nginx/conf.d/upstream.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: reload nginx
+      
+    - name: Create nginx SSL config
+      template:
+        src: templates/ssl.conf.j2
+        dest: /etc/nginx/conf.d/ssl.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: reload nginx
+      
+    - name: Configure keepalived
+      template:
+        src: templates/keepalived.conf.j2
+        dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: '0640'
+      notify: restart keepalived
+      
+    - name: Ensure services are running
+      systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - nginx
+        - keepalived
+        - docker
+
+  handlers:
+    - name: reload nginx
+      systemd:
+        name: nginx
+        state: reloaded
+        
+    - name: restart keepalived
+      systemd:
+        name: keepalived
+        state: restarted

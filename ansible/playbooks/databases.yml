@@ -1,0 +1,74 @@
+---
+- name: Configure PostgreSQL Primary
+  hosts: databases
+  become: yes
+  serial: 1
+  
+  roles:
+    - common
+    - postgresql
+    
+  tasks:
+    - name: Configure PostgreSQL for replication (primary)
+      block:
+        - name: Create replication user
+          postgresql_user:
+            name: "{{ postgres_replication_user }}"
+            password: "{{ postgres_replication_password }}"
+            role_attr_flags: REPLICATION,LOGIN
+          become_user: postgres
+          when: postgres_role == 'primary'
+          
+        - name: Configure postgresql.conf
+          template:
+            src: templates/postgresql.conf.primary.j2
+            dest: /etc/postgresql/{{ postgres_version }}/main/postgresql.conf
+            owner: postgres
+            group: postgres
+            mode: '0640'
+          notify: restart postgresql
+          when: postgres_role == 'primary'
+          
+        - name: Configure pg_hba.conf
+          template:
+            src: templates/pg_hba.conf.j2
+            dest: /etc/postgresql/{{ postgres_version }}/main/pg_hba.conf
+            owner: postgres
+            group: postgres
+            mode: '0640'
+          notify: restart postgresql
+          
+        - name: Configure postgresql.conf (replica)
+          template:
+            src: templates/postgresql.conf.replica.j2
+            dest: /etc/postgresql/{{ postgres_version }}/main/postgresql.conf
+            owner: postgres
+            group: postgres
+            mode: '0640'
+          notify: restart postgresql
+          when: postgres_role == 'replica'
+          
+    - name: Setup PgBouncer
+      apt:
+        name: pgbouncer
+        state: present
+        
+    - name: Configure PgBouncer
+      template:
+        src: templates/pgbouncer.ini.j2
+        dest: /etc/pgbouncer/pgbouncer.ini
+        owner: postgres
+        group: postgres
+        mode: '0640'
+      notify: restart pgbouncer
+
+  handlers:
+    - name: restart postgresql
+      systemd:
+        name: postgresql
+        state: restarted
+        
+    - name: restart pgbouncer
+      systemd:
+        name: pgbouncer
+        state: restarted

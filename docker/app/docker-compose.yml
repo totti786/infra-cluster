@@ -1,0 +1,53 @@
+services:
+  app:
+    image: node:20-alpine
+    container_name: application
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./app:/app
+      - node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://{{ postgres_user }}:{{ postgres_password }}@{{ db_primary_host }}:5432/{{ postgres_db }}
+      - REDIS_URL=redis://:{{ redis_password }}@{{ redis_cluster_host }}:6379
+      - PORT=3000
+    command: sh -c "npm install && npm start"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+          
+  nginx-sidecar:
+    image: nginx:alpine
+    container_name: nginx-local
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+volumes:
+  node_modules:
+
+networks:
+  app-network:
+    driver: bridge

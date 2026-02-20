@@ -1,0 +1,69 @@
+---
+- name: Configure Redis Cluster
+  hosts: redis_cluster
+  become: yes
+  
+  roles:
+    - common
+    - redis
+    
+  tasks:
+    - name: Install Redis
+      apt:
+        name:
+          - redis-server
+          - redis-tools
+        state: present
+        
+    - name: Configure Redis for clustering
+      template:
+        src: templates/redis.conf.j2
+        dest: /etc/redis/redis.conf
+        owner: redis
+        group: redis
+        mode: '0640'
+      notify: restart redis
+      
+    - name: Ensure Redis is running
+      systemd:
+        name: redis-server
+        state: started
+        enabled: yes
+        
+- name: Initialize Redis Cluster
+  hosts: redis_cluster[0]
+  become: yes
+  run_once: true
+  
+  tasks:
+    - name: Check if cluster is already initialized
+      command: redis-cli cluster info
+      register: cluster_info
+      changed_when: false
+      failed_when: false
+      
+    - name: Initialize Redis cluster
+      command: >
+        redis-cli --cluster create 
+        {% for host in groups['redis_cluster'] %}
+        {{ hostvars[host].ansible_host }}:6379 
+        {% endfor %}
+        --cluster-replicas 0 
+        --cluster-yes
+      when: "'cluster_state:ok' not in cluster_info.stdout"
+      run_once: true
+      
+    - name: Verify cluster status
+      command: redis-cli cluster info
+      register: cluster_status
+      changed_when: false
+      
+    - name: Display cluster status
+      debug:
+        var: cluster_status.stdout_lines
+
+  handlers:
+    - name: restart redis
+      systemd:
+        name: redis-server
+        state: restarted

@@ -1,0 +1,52 @@
+---
+- name: Configure Application Servers
+  hosts: applications
+  become: yes
+  
+  roles:
+    - common
+    - docker
+    
+  tasks:
+    - name: Create app directory
+      file:
+        path: /opt/app
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+        
+    - name: Copy docker-compose file
+      template:
+        src: templates/docker-compose.app.yml.j2
+        dest: /opt/app/docker-compose.yml
+        owner: root
+        group: root
+        mode: '0640'
+        
+    - name: Copy environment file
+      template:
+        src: templates/app.env.j2
+        dest: /opt/app/.env
+        owner: root
+        group: root
+        mode: '0640'
+        
+    - name: Pull docker images
+      command: docker compose -f /opt/app/docker-compose.yml pull
+      args:
+        chdir: /opt/app
+      changed_when: false
+      
+    - name: Start application
+      command: docker compose -f /opt/app/docker-compose.yml up -d
+      args:
+        chdir: /opt/app
+      changed_when: false
+      
+    - name: Wait for application to be ready
+      wait_for:
+        port: 3000
+        host: 127.0.0.1
+        delay: 5
+        timeout: 60
