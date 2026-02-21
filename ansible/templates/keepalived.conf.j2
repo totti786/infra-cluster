@@ -4,8 +4,8 @@ global_defs {
     script_user root
 }
 
-vrrp_script check_nginx {
-    script "/usr/local/bin/check-nginx.sh"
+vrrp_script check_traefik {
+    script "/usr/local/bin/check-traefik.sh"
     interval 2
     weight -20
     fall 3
@@ -29,7 +29,7 @@ vrrp_instance VI_1 {
     }
     
     track_script {
-        check_nginx
+        check_traefik
     }
     
     notify_master "/usr/local/bin/notify-master.sh"

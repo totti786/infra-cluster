@@ -7,27 +7,59 @@
   roles:
     - common
     - docker
-    - nginx
+    - traefik
     - keepalived
     
   tasks:
-    - name: Create nginx upstream config
-      template:
-        src: templates/upstream.conf.j2
-        dest: /etc/nginx/conf.d/upstream.conf
+    - name: Create traefik config directory
+      file:
+        path: /etc/traefik/dynamic
+        state: directory
         owner: root
         group: root
-        mode: '0644'
-      notify: reload nginx
+        mode: '0755'
+    
+    - name: Create letsencrypt directory
+      file:
+        path: /etc/traefik/letsencrypt
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+    
+    - name: Create traefik log directory
+      file:
+        path: /var/log/traefik
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
       
-    - name: Create nginx SSL config
+    - name: Copy traefik static config
       template:
-        src: templates/ssl.conf.j2
-        dest: /etc/nginx/conf.d/ssl.conf
+        src: templates/traefik.yml.j2
+        dest: /etc/traefik/traefik.yml
         owner: root
         group: root
         mode: '0644'
-      notify: reload nginx
+      notify: restart traefik
+      
+    - name: Copy traefik dynamic config
+      template:
+        src: templates/traefik-dynamic.yml.j2
+        dest: /etc/traefik/dynamic/dynamic.yml
+        owner: root
+        group: root
+        mode: '0644'
+      notify: reload traefik
+      
+    - name: Copy docker-compose for traefik
+      template:
+        src: templates/traefik-compose.yml.j2
+        dest: /opt/traefik/docker-compose.yml
+        owner: root
+        group: root
+        mode: '0640'
       
     - name: Configure keepalived
       template:
@@ -38,21 +70,39 @@
         mode: '0640'
       notify: restart keepalived
       
+    - name: Create traefik health check script
+      copy:
+        content: |
+          #!/bin/bash
+          curl -sf http://localhost:8080/ping || exit 1
+        dest: /usr/local/bin/check-traefik.sh
+        owner: root
+        group: root
+        mode: '0755'
+      
     - name: Ensure services are running
       systemd:
         name: "{{ item }}"
         state: started
         enabled: yes
       loop:
-        - nginx
         - keepalived
         - docker
+      
+    - name: Start traefik container
+      docker_compose:
+        project_src: /opt/traefik
+        state: present
+        pull: yes
 
   handlers:
-    - name: reload nginx
-      systemd:
-        name: nginx
-        state: reloaded
+    - name: reload traefik
+      command: docker exec traefik traefik reload
+      
+    - name: restart traefik
+      docker_compose:
+        project_src: /opt/traefik
+        state: restarted
         
     - name: restart keepalived
       systemd:

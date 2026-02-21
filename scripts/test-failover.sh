@@ -67,11 +67,10 @@ test_keepalived_failover() {
     fi
 }
 
-test_nginx_failover() {
-    log_info "Testing Nginx backend failover..."
+test_traefik_failover() {
+    log_info "Testing Traefik backend failover..."
     
     local backend="app-1"
-    local original_weight=$(ssh root@lb-1 "grep 'server.*$backend' /etc/nginx/conf.d/upstream.conf | grep -o 'weight=[0-9]*' | cut -d= -f2" || echo 1)
     
     log_info "Taking down $backend..."
     ssh root@$backend "docker compose -f /opt/app/docker-compose.yml down"
@@ -89,7 +88,7 @@ test_nginx_failover() {
     log_info "Restoring $backend..."
     ssh root@$backend "docker compose -f /opt/app/docker-compose.yml up -d"
     
-    log_success "Nginx failover test completed"
+    log_success "Traefik failover test completed"
 }
 
 test_postgres_failover() {
@@ -152,8 +151,8 @@ run_all_tests() {
     fi
     echo ""
     
-    echo "--- Test 2: Nginx Backend Failover ---"
-    if test_nginx_failover; then
+    echo "--- Test 2: Traefik Backend Failover ---"
+    if test_traefik_failover; then
         ((tests_passed++))
     else
         ((tests_failed++))
@@ -194,8 +193,8 @@ case "${1:-all}" in
     keepalived)
         test_keepalived_failover
         ;;
-    nginx)
-        test_nginx_failover
+    traefik)
+        test_traefik_failover
         ;;
     postgres)
         test_postgres_failover
@@ -207,7 +206,7 @@ case "${1:-all}" in
         run_all_tests
         ;;
     *)
-        echo "Usage: $0 {keepalived|nginx|postgres|redis|all}"
+        echo "Usage: $0 {keepalived|traefik|postgres|redis|all}"
         exit 1
         ;;
 esac

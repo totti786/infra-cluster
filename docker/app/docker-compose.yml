@@ -7,8 +7,8 @@ services:
     volumes:
       - ./app:/app
       - node_modules:/app/node_modules
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgres://{{ postgres_user }}:{{ postgres_password }}@{{ db_primary_host }}:5432/{{ postgres_db }}
@@ -23,6 +23,15 @@ services:
       start_period: 40s
     networks:
       - app-network
+      - traefik-web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`{{ domain }}`) || Host(`www.{{ domain }}`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
+      - "traefik.http.services.app.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.app.loadbalancer.healthcheck.interval=30s"
     deploy:
       resources:
         limits:
@@ -31,19 +40,6 @@ services:
         reservations:
           cpus: '0.5'
           memory: 256M
-          
-  nginx-sidecar:
-    image: nginx:alpine
-    container_name: nginx-local
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - app
-    networks:
-      - app-network
 
 volumes:
   node_modules:
@@ -51,3 +47,5 @@ volumes:
 networks:
   app-network:
     driver: bridge
+  traefik-web:
+    external: true

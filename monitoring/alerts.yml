@@ -37,14 +37,14 @@ groups:
           summary: "Low disk space on {{ $labels.instance }}"
           description: "Disk usage is above 85% on {{ $labels.instance }}."
 
-      - alert: NginxDown
-        expr: nginx_up == 0
+      - alert: TraefikDown
+        expr: traefik_config_reloads_total == 0 or absent(trajik_config_reloads_total)
         for: 1m
         labels:
           severity: critical
         annotations:
-          summary: "Nginx down on {{ $labels.instance }}"
-          description: "Nginx is not responding."
+          summary: "Traefik down on {{ $labels.instance }}"
+          description: "Traefik is not responding."
 
       - alert: PostgreSQLDown
         expr: pg_up == 0

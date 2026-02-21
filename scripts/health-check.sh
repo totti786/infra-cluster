@@ -25,13 +25,13 @@ check_vip() {
     fi
 }
 
-check_nginx() {
+check_traefik() {
     local host=$1
-    if curl -sf "http://$host/health" &>/dev/null; then
-        print_status "✓ Nginx healthy on $host" "$GREEN"
+    if curl -sf "http://$host:8080/ping" &>/dev/null; then
+        print_status "✓ Traefik healthy on $host" "$GREEN"
         return 0
     else
-        print_status "✗ Nginx NOT healthy on $host" "$RED"
+        print_status "✗ Traefik NOT healthy on $host" "$RED"
         return 1
     fi
 }
@@ -110,7 +110,7 @@ main() {
     
     echo "--- Load Balancers ---"
     for host in lb-1 lb-2 lb-3; do
-        check_nginx "$host" || ((failures++))
+        check_traefik "$host" || ((failures++))
         check_keepalived "$host" || ((failures++))
     done
     echo ""

@@ -1,0 +1,82 @@
+http:
+  routers:
+    app:
+      rule: "Host(`example.com`) || Host(`www.example.com`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: app
+      middlewares:
+        - security-headers
+        - rate-limit
+
+    api:
+      rule: "Host(`traefik.example.com`)"
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      service: api@internal
+      middlewares:
+        - auth
+
+  services:
+    app:
+      loadBalancer:
+        servers:
+          - url: "http://10.0.1.1:3000"
+          - url: "http://10.0.1.2:3000"
+          - url: "http://10.0.1.3:3000"
+        healthCheck:
+          path: /health
+          interval: "30s"
+          timeout: "5s"
+        sticky:
+          cookie:
+            name: server_id
+            secure: true
+            httpOnly: true
+        passHostHeader: true
+
+  middlewares:
+    security-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        customFrameOptionsValue: "SAMEORIGIN"
+        referrerPolicy: "strict-origin-when-cross-origin"
+        permissionsPolicy: "geolocation=(), microphone=(), camera=()"
+    
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: 1m
+        sourceCriterion:
+          ipStrategy:
+            depth: 2
+    
+    auth:
+      basicAuth:
+        users:
+          - "admin:$apr1$xyz123$encrypted_password_here"
+        removeHeader: true
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      maxVersion: VersionTLS13
+      cipherSuites:
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256

@@ -77,7 +77,8 @@ backup_configs() {
     
     for host in lb-1 lb-2 lb-3; do
         mkdir -p ./backups/tmp/$host
-        scp root@$host:/etc/nginx/nginx.conf ./backups/tmp/$host/ 2>/dev/null || true
+        scp root@$host:/etc/traefik/traefik.yml ./backups/tmp/$host/ 2>/dev/null || true
+        scp root@$host:/etc/traefik/dynamic/dynamic.yml ./backups/tmp/$host/ 2>/dev/null || true
         scp root@$host:/etc/keepalived/keepalived.conf ./backups/tmp/$host/ 2>/dev/null || true
     done
     

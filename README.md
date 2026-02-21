@@ -42,13 +42,13 @@ A production-grade, fault-tolerant infrastructure setup for high-availability de
 ## Features
 
 - **Automatic Failover**: Keepalived-based VIP failover in under 3 seconds
-- **Load Balancing**: Nginx upstream with health checks
+- **Load Balancing**: Traefik reverse proxy with automatic service discovery
 - **Zero-Downtime Deployments**: Blue-green deployment strategy
 - **Database Replication**: PostgreSQL streaming replication
 - **Caching Layer**: Redis cluster for session and data caching
 - **Monitoring Stack**: Prometheus + Grafana for observability
 - **Infrastructure as Code**: Terraform + Ansible for reproducibility
-- **SSL/TLS**: Let's Encrypt automation with certbot
+- **SSL/TLS**: Automatic Let's Encrypt certificates via Traefik
 
 ## Quick Start
 
@@ -61,8 +61,8 @@ A production-grade, fault-tolerant infrastructure setup for high-availability de
 ### 1. Clone and Configure
 
 ```bash
-git clone https://github.com/Totti786/ha-vps-cluster.git
-cd ha-vps-cluster
+git clone https://github.com/totti786/infra-cluster.git
+cd infra-cluster
 
 # Copy and edit inventory
 cp ansible/inventory/hosts.yml.example ansible/inventory/hosts.yml
@@ -96,7 +96,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/site.yml
 ## Project Structure
 
 ```
-ha-vps-cluster/
+infra-cluster/
 ├── terraform/              # Infrastructure provisioning
 │   ├── main.tf
 │   ├── variables.tf
@@ -106,7 +106,7 @@ ha-vps-cluster/
 │   ├── playbooks/
 │   └── roles/
 ├── docker/                 # Container configurations
-│   ├── nginx/
+│   ├── traefik/
 │   ├── keepalived/
 │   ├── postgres/
 │   └── redis/
@@ -118,7 +118,7 @@ ha-vps-cluster/
 ## Components
 
 ### Load Balancer Layer
-- **Nginx**: Reverse proxy and load balancer
+- **Traefik**: Modern reverse proxy with automatic service discovery
 - **Keepalived**: VRRP for IP failover
 - **Health checks**: Active/passive health monitoring
 
@@ -151,11 +151,11 @@ GRAFANA_PASSWORD=your_grafana_password
 ### SSL Certificates
 
 ```bash
-# Automatic with certbot
-./scripts/setup-ssl.sh your-domain.com
+# Traefik automatically handles Let's Encrypt certificates
+# Configure in traefik/traefik.yml
 
-# Manual certificate upload
-./scripts/upload-cert.sh /path/to/cert.pem /path/to/key.pem
+# For wildcard certificates:
+./scripts/setup-dns-challenge.sh your-domain.com
 ```
 
 ## Monitoring
@@ -164,7 +164,7 @@ Access Grafana at `https://monitor.your-domain.com`
 
 Default dashboards:
 - Cluster Overview
-- Nginx Metrics
+- Traefik Metrics
 - PostgreSQL Performance
 - Redis Statistics
 - Container Health
@@ -196,13 +196,16 @@ ansible-playbook -i inventory/hosts.yml playbooks/app-node.yml
 ./scripts/backup-postgres.sh
 
 # Automated (add to cron)
-0 2 * * * /opt/ha-vps-cluster/scripts/backup-postgres.sh
+0 2 * * * /opt/infra-cluster/scripts/backup-postgres.sh
 ```
 
-### Update SSL Certificates
+### Update Traefik Configuration
 
 ```bash
-./scripts/renew-ssl.sh
+# Edit dynamic configuration
+vim docker/traefik/dynamic.yml
+
+# Traefik auto-reloads configuration
 ```
 
 ### Rolling Updates
@@ -235,6 +238,15 @@ ansible-playbook -i inventory/hosts.yml playbooks/app-node.yml
    redis-cli cluster check 10.0.2.3:6379
    ```
 
+4. **Traefik not routing traffic**
+   ```bash
+   # Check Traefik dashboard
+   curl http://localhost:8080/api/rawdata
+   
+   # Check container labels
+   docker inspect <container> | grep -A20 Labels
+   ```
+
 ## Performance Benchmarks
 
 | Metric | Value |
@@ -248,7 +260,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/app-node.yml
 
 - UFW firewall configuration
 - Fail2ban for SSH protection
-- SSL/TLS for all public endpoints
+- SSL/TLS for all public endpoints (Traefik auto-HTTPS)
 - Encrypted database connections
 - Regular security updates via unattended-upgrades
 
@@ -259,8 +271,8 @@ MIT License - see [LICENSE](LICENSE)
 ## Author
 
 **Tarek Deshli**
-- GitHub: [@Totti786](https://github.com/Totti786)
-- LinkedIn: [Totti786](https://linkedin.com/in/Totti786)
+- GitHub: [@totti786](https://github.com/totti786)
+- LinkedIn: [tarekdeshli](https://linkedin.com/in/tarekdeshli)
 
 ## Contributing
 

@@ -34,12 +34,12 @@ scrape_configs:
           - '10.0.2.4:9100'
           - '10.0.2.5:9100'
 
-  - job_name: 'nginx'
+  - job_name: 'traefik'
     static_configs:
       - targets:
-          - '10.0.0.1:9113'
-          - '10.0.0.2:9113'
-          - '10.0.0.3:9113'
+          - '10.0.0.1:8080'
+          - '10.0.0.2:8080'
+          - '10.0.0.3:8080'
 
   - job_name: 'postgres'
     static_configs:
